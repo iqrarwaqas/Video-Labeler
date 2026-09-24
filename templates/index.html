@@ -3,119 +3,228 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Video Speaker Labeler</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+  <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+  <script>
+    // Apply the saved theme before the page is drawn, so it never flashes the wrong one.
+    (function () {
+      var choice = localStorage.getItem("labeler:theme") || "system";
+      var dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
+<!-- Icons (Lucide, ISC license) -->
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-skip" viewBox="0 0 24 24"><path d="m5 4 10 8-10 8V4z"/><path d="M19 5v14"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></symbol>
+</svg>
+
+<!-- ============ Header (always visible) ============ -->
+<header class="topbar">
+  <button id="toggle-sidebar" class="icon-btn project-only" title="Show / hide video list"><svg class="ic"><use href="#i-sidebar"/></svg></button>
+  <div class="brand">
+    <img class="brand-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
+    <span class="brand-name">Speaker Labeler</span>
+  </div>
+  <div class="project project-only">
+    <span id="project-name" class="project-chip"></span>
+    <span id="project-path" class="project-path"></span>
+  </div>
+  <div class="spacer"></div>
+  <div class="progress-wrap project-only" title="Labeled videos">
+    <div class="progress-text"><b id="count-labeled">0</b> / <span id="count-total">0</span> labeled <span id="count-pct" class="pct">0%</span></div>
+    <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+  </div>
+  <div class="menu-wrap">
+    <button id="menu-btn" class="icon-btn" title="Settings" aria-haspopup="true" aria-expanded="false">
+      <svg class="ic"><use href="#i-settings"/></svg><span id="menu-dot" class="menu-dot hidden"></span>
+    </button>
+    <div id="menu" class="menu hidden" role="menu">
+      <div class="menu-label">Appearance</div>
+      <div id="theme-switch" class="segmented full">
+        <button data-theme-choice="system" title="Follow Windows"><svg class="ic"><use href="#i-monitor"/></svg>System</button>
+        <button data-theme-choice="light"><svg class="ic"><use href="#i-sun"/></svg>Light</button>
+        <button data-theme-choice="dark"><svg class="ic"><use href="#i-moon"/></svg>Dark</button>
+      </div>
+      <div class="menu-sep"></div>
+      <button id="menu-update" class="menu-item" role="menuitem"><svg class="ic"><use href="#i-refresh"/></svg><span>Check for updates</span></button>
+      <button id="menu-reveal" class="menu-item project-only" role="menuitem"><svg class="ic"><use href="#i-sheet"/></svg><span>Show labels file</span></button>
+      <button id="menu-change" class="menu-item project-only" role="menuitem"><svg class="ic"><use href="#i-folder"/></svg><span>Change project…</span></button>
+      <div class="menu-sep"></div>
+      <div class="menu-foot">Video Speaker Labeler · v{{ version }}</div>
+    </div>
+  </div>
+</header>
+
 <!-- ============ Update banner ============ -->
 <div id="update-banner" class="update-banner hidden">
-  <span id="update-text"></span>
-  <button id="update-install" class="btn primary small-btn hidden">Update now</button>
-  <a id="update-link" class="btn ghost small-btn" target="_blank" rel="noopener">View release</a>
-  <button id="update-dismiss" class="icon-btn" title="Remind me later">×</button>
+  <svg class="ic"><use href="#i-download"/></svg>
+  <span id="update-text" class="update-text"></span>
+  <button id="update-install" class="btn primary sm hidden">Update now</button>
+  <a id="update-link" class="btn ghost sm" target="_blank" rel="noopener">Release notes <svg class="ic"><use href="#i-external"/></svg></a>
+  <button id="update-dismiss" class="icon-btn sm" title="Remind me later"><svg class="ic"><use href="#i-x"/></svg></button>
 </div>
 
 <!-- ============ Setup screen ============ -->
 <section id="setup" class="setup hidden">
-  <div class="card setup-card">
-    <div class="logo">🎬</div>
-    <h1>Video Speaker Labeler</h1>
-    <p class="muted">Pick the folder with your videos. The labels are saved to <code>&lt;project&gt;_labels.xlsx</code> in the output folder. If you reopen the same project later, you carry on where you stopped.</p>
-    <label>Project name <span class="muted">(optional — default: the videos folder name)</span>
-      <input id="setup-project" type="text" placeholder="e.g. Batch_01" autocomplete="off">
+  <div class="setup-card card">
+    <img class="setup-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
+    <h1>Open a project</h1>
+    <p class="muted lead">Pick the folder with your videos. Labels are saved to <code>&lt;project&gt;_labels.xlsx</code> in the output folder, and reopening a project continues where you stopped.</p>
+
+    <label class="field">
+      <span class="field-label">Project name <span class="opt">optional</span></span>
+      <input id="setup-project" type="text" placeholder="Defaults to the videos folder name, e.g. Batch_01" autocomplete="off" spellcheck="false">
     </label>
-    <label>Videos folder
-      <input id="setup-videos" type="text" placeholder="D:\data\videos" autocomplete="off">
+    <label class="field">
+      <span class="field-label">Videos folder</span>
+      <span class="input-row">
+        <input id="setup-videos" type="text" placeholder="D:\data\videos" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn desktop-only" data-browse="setup-videos"><svg class="ic"><use href="#i-folder"/></svg>Browse</button>
+      </span>
     </label>
-    <label>Output folder <span class="muted">(optional — default: an <code>output</code> folder next to the videos folder)</span>
-      <input id="setup-output" type="text" placeholder="D:\data\output" autocomplete="off">
+    <label class="field">
+      <span class="field-label">Output folder <span class="opt">optional</span></span>
+      <span class="input-row">
+        <input id="setup-output" type="text" placeholder="Defaults to an output folder next to the videos folder" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn desktop-only" data-browse="setup-output"><svg class="ic"><use href="#i-folder"/></svg>Browse</button>
+      </span>
     </label>
-    <div id="setup-error" class="error hidden"></div>
-    <button id="setup-go" class="btn primary wide">Open project</button>
-    <p class="muted small version">Version {{ version }}</p>
+
+    <div id="setup-error" class="alert error hidden"></div>
+    <button id="setup-go" class="btn primary lg wide">Open project</button>
+
+    <div class="setup-foot">
+      <span>Version {{ version }}</span>
+      <button id="setup-update" class="link-btn"><svg class="ic"><use href="#i-refresh"/></svg><span>Check for updates</span></button>
+    </div>
   </div>
 </section>
 
 <!-- ============ Labeler ============ -->
 <section id="labeler" class="app hidden">
-  <header class="topbar">
-    <button id="toggle-sidebar" class="icon-btn" title="Show / hide video list">☰</button>
-    <div class="title">
-      <div class="app-name">Video Speaker Labeler <span id="project-name" class="project-chip"></span></div>
-      <div id="project-path" class="muted small"></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-text"><span id="count-labeled">0</span> / <span id="count-total">0</span> labeled</div>
-      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
-    </div>
-    <button id="change-project" class="btn ghost small-btn" title="Open another project or folder">Change project</button>
-  </header>
-
-  <div class="body">
-    <aside id="sidebar" class="sidebar">
-      <div class="sidebar-head">
-        <input id="search" type="search" placeholder="Search videos…">
-        <label class="check"><input id="only-unlabeled" type="checkbox"> Unlabeled only</label>
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <div class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="search" type="search" placeholder="Search videos" spellcheck="false">
       </div>
-      <ul id="video-list" class="video-list"></ul>
-    </aside>
+      <div id="list-filter" class="segmented full">
+        <button data-filter="all">All</button>
+        <button data-filter="todo">To do</button>
+        <button data-filter="done">Done</button>
+      </div>
+      <div class="stats">
+        <span class="stat onscreen" title="On-screen"><i class="dot onscreen"></i><b id="stat-onscreen">0</b> On</span>
+        <span class="stat offscreen" title="Off-screen"><i class="dot offscreen"></i><b id="stat-offscreen">0</b> Off</span>
+        <span class="stat unclear" title="Unclear"><i class="dot unclear"></i><b id="stat-unclear">0</b> Unclear</span>
+      </div>
+    </div>
+    <ul id="video-list" class="video-list"></ul>
+    <div id="list-empty" class="list-empty hidden">No matching videos</div>
+  </aside>
 
-    <main class="main">
-      <div id="empty" class="card empty hidden">No video files found in this folder.</div>
+  <main class="main">
+    <div id="empty" class="empty card hidden">
+      <svg class="ic xl"><use href="#i-video"/></svg>
+      <h2>No videos found</h2>
+      <p class="muted">This folder has no <code>.mp4 .mov .webm .mkv .avi .m4v</code> files.</p>
+      <button id="empty-change" class="btn">Choose another folder</button>
+    </div>
 
-      <div id="work" class="work">
-        <div class="player-card card">
-          <video id="player" controls autoplay playsinline></video>
-          <div id="video-error" class="video-error hidden">This video can't be played in the browser. Try Chrome/Edge, or convert it to MP4 (H.264/AAC).</div>
+    <div id="work" class="work">
+      <div class="player-card">
+        <video id="player" controls autoplay playsinline></video>
+        <div id="video-error" class="video-error hidden"><svg class="ic"><use href="#i-alert"/></svg>This video can't be played here. Convert it to MP4 (H.264/AAC).</div>
+      </div>
+
+      <div class="nav-row">
+        <button id="prev" class="btn nav" title="Previous (←)"><svg class="ic"><use href="#i-left"/></svg>Prev</button>
+        <div class="now">
+          <div id="current-name" class="current-name">—</div>
+          <div class="now-meta"><span id="current-pos">0 / 0</span><span id="current-status" class="badge">Not labeled</span></div>
         </div>
+        <button id="next" class="btn nav" title="Next (→)">Next<svg class="ic"><use href="#i-right"/></svg></button>
+      </div>
 
-        <div class="nav-row">
-          <button id="prev" class="btn nav" title="Previous (←)">◀ Prev</button>
-          <div class="now">
-            <div id="current-name" class="current-name">—</div>
-            <div class="muted small"><span id="current-pos">0 / 0</span> · <span id="current-status" class="status-badge">Not labeled</span></div>
-          </div>
-          <button id="next" class="btn nav" title="Next (→)">Next ▶</button>
-        </div>
-
-        <div class="question card">
+      <div class="question card">
+        <div class="question-head">
           <h2>Who speaks first?</h2>
-          <div class="choices">
-            <button class="choice onscreen" data-label="onscreen">
-              <span class="key">1</span>
-              <span class="choice-title">On-screen</span>
-              <span class="choice-sub">Actor in the video speaks first → speaker <b>A</b></span>
-            </button>
-            <button class="choice offscreen" data-label="offscreen">
-              <span class="key">2</span>
-              <span class="choice-title">Off-screen</span>
-              <span class="choice-sub">Voice not in the video speaks first → on-screen actor is <b>B</b></span>
-            </button>
-            <button class="choice unclear" data-label="unclear">
-              <span class="key">3</span>
-              <span class="choice-title">Unclear / Skip</span>
-              <span class="choice-sub">Only one speaker, overlapping speech, no audio…</span>
-            </button>
-          </div>
-          <div class="options-row">
-            <label class="check"><input id="auto-advance" type="checkbox" checked> Go to the next video after labeling</label>
-            <button id="clear-label" class="btn ghost small-btn">Clear label</button>
-            <button id="jump-unlabeled" class="btn ghost small-btn" title="N">Next unlabeled ⏭</button>
-          </div>
+          <label class="switch" title="Open the next unlabeled video after labeling">
+            <input id="auto-advance" type="checkbox" checked><span class="track"></span>Auto-advance
+          </label>
         </div>
-
-        <div class="shortcuts muted small">
-          <kbd>←</kbd>/<kbd>→</kbd> prev/next · <kbd>1</kbd> on-screen · <kbd>2</kbd> off-screen · <kbd>3</kbd> unclear ·
-          <kbd>Space</kbd> play/pause · <kbd>R</kbd> replay · <kbd>N</kbd> next unlabeled
+        <div class="choices">
+          <button class="choice onscreen" data-label="onscreen">
+            <span class="choice-icon"><svg class="ic"><use href="#i-video"/></svg></span>
+            <span class="choice-body">
+              <span class="choice-title">On-screen</span>
+              <span class="choice-sub">The actor in the video speaks first. Track <b>A</b></span>
+            </span>
+            <kbd>1</kbd>
+          </button>
+          <button class="choice offscreen" data-label="offscreen">
+            <span class="choice-icon"><svg class="ic"><use href="#i-mic"/></svg></span>
+            <span class="choice-body">
+              <span class="choice-title">Off-screen</span>
+              <span class="choice-sub">A voice not in the video speaks first. Track <b>B</b></span>
+            </span>
+            <kbd>2</kbd>
+          </button>
+          <button class="choice unclear" data-label="unclear">
+            <span class="choice-icon"><svg class="ic"><use href="#i-help"/></svg></span>
+            <span class="choice-body">
+              <span class="choice-title">Unclear / Skip</span>
+              <span class="choice-sub">One speaker, overlapping speech, no audio…</span>
+            </span>
+            <kbd>3</kbd>
+          </button>
+        </div>
+        <div class="options-row">
+          <button id="clear-label" class="btn ghost sm"><svg class="ic"><use href="#i-eraser"/></svg>Clear label</button>
+          <div class="spacer"></div>
+          <button id="jump-unlabeled" class="btn ghost sm" title="N">Next unlabeled<svg class="ic"><use href="#i-skip"/></svg></button>
         </div>
       </div>
-    </main>
-  </div>
+
+      <div class="shortcuts">
+        <svg class="ic"><use href="#i-keyboard"/></svg>
+        <span><kbd>←</kbd><kbd>→</kbd> prev / next</span>
+        <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> label</span>
+        <span><kbd>Space</kbd> play / pause</span>
+        <span><kbd>R</kbd> replay</span>
+        <span><kbd>N</kbd> next unlabeled</span>
+      </div>
+    </div>
+  </main>
 </section>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden"><svg class="ic"><use id="toast-icon" href="#i-check"/></svg><span id="toast-text"></span></div>
 
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
