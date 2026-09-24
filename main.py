@@ -1,15 +1,18 @@
 """Video Speaker Labeler.
 
-A small local web app for labeling who speaks first in each video
+A small desktop app for labeling who speaks first in each video
 (on-screen or off-screen actor). Labels are saved to an Excel file and the
 session resumes automatically from that file.
+
+The UI is a local Flask app shown in a native window (pywebview / Edge WebView2).
 
 Usage:
     python main.py --videos "D:/data/videos"
     python main.py --videos "D:/data/videos" --project "Batch_01"
     python main.py --videos "D:/data/videos" --output "D:/data/output"
     python main.py --videos "D:/data/videos" --import "speaker list.xlsx"
-    python main.py            # pick the folder from the browser
+    python main.py            # pick the folder in the app
+    python main.py --browser  # open in the web browser instead of a window
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -30,6 +34,7 @@ from pathlib import Path
 
 import pandas as pd
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from werkzeug.serving import make_server
 
 __version__ = "1.0.2"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
@@ -42,6 +47,8 @@ if FROZEN:
     CONFIG_FILE = Path(os.environ.get("APPDATA", Path.home())) / "VideoLabeler" / "config.json"
 else:
     CONFIG_FILE = RESOURCE_DIR / ".labeler_config.json"
+# Where the app window keeps its local storage (theme and UI preferences).
+WEBVIEW_STORAGE = Path(os.environ.get("APPDATA", Path.home())) / "VideoLabeler" / "WebView"
 VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v"}
 LEGACY_OUTPUT_NAME = "labels.xlsx"  # used before projects had names
 
@@ -53,6 +60,7 @@ DIARIZED = {"onscreen": "A", "offscreen": "B", "unclear": ""}
 
 app = Flask(__name__, template_folder=str(RESOURCE_DIR / "templates"), static_folder=str(RESOURCE_DIR / "static"))
 lock = threading.Lock()
+window = None  # the pywebview window, when running as a desktop app
 
 
 def safe_filename(name: str) -> str:
@@ -211,10 +219,10 @@ def github_get(url: str, timeout: float):
     return urllib.request.urlopen(req, timeout=timeout)
 
 
-def check_update() -> dict:
-    """Compare this version with the latest GitHub release (looked up once per run)."""
+def check_update(force: bool = False) -> dict:
+    """Compare this version with the latest GitHub release (cached unless forced)."""
     global _update_info
-    if _update_info is None:
+    if _update_info is None or force:
         info = {"current": __version__, "available": False}
         try:
             with github_get(f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest", timeout=5) as r:
@@ -228,7 +236,7 @@ def check_update() -> dict:
                 available=parse_version(release["tag_name"]) > parse_version(__version__),
             )
         except Exception:  # noqa: BLE001 - offline or no releases yet: just don't offer an update
-            pass
+            info["error"] = "Couldn't check for updates. Check your internet connection and try again."
         _update_info = info
     return {**_update_info, "can_install": FROZEN and bool(_update_info.get("installer"))}
 
@@ -251,9 +259,21 @@ def api_version():
     return jsonify({"app": "VideoLabeler", "version": __version__})
 
 
+@app.post("/api/focus")
+def api_focus():
+    """Called by a second copy of the app: bring this window to the front."""
+    if window is None:
+        return jsonify({"ok": True, "window": False})
+    window.restore()
+    window.show()
+    window.on_top = True  # Windows blocks focus stealing, so raise the window this way
+    window.on_top = False
+    return jsonify({"ok": True, "window": True})
+
+
 @app.get("/api/update")
 def api_update():
-    return jsonify(check_update())
+    return jsonify(check_update(force=request.args.get("force") == "1"))
 
 
 @app.post("/api/update/install")
@@ -348,6 +368,18 @@ def api_clear(file):
         return jsonify({"ok": True, **project.counts()})
 
 
+@app.post("/api/reveal")
+def api_reveal():
+    """Show the labels file in Explorer (only for the PC the app runs on)."""
+    if project is None or request.remote_addr not in ("127.0.0.1", "::1"):
+        abort(400)
+    if project.output_file.exists():
+        subprocess.Popen(["explorer", "/select,", str(project.output_file)])
+    else:
+        os.startfile(project.output_dir)
+    return jsonify({"ok": True})
+
+
 @app.get("/video/<path:file>")
 def video(file):
     if project is None or file not in project.videos:
@@ -359,12 +391,86 @@ def video(file):
 # ---------------------------------------------------------------- entry
 
 
+class DesktopApi:
+    """Functions the page can call as window.pywebview.api.<name>()."""
+
+    def pick_folder(self, start: str = "") -> str | None:
+        import webview
+
+        start = start.strip().strip('"')
+        picked = window.create_file_dialog(webview.FileDialog.FOLDER, directory=start if os.path.isdir(start) else "")
+        return picked[0] if picked else None
+
+    def set_dark_title_bar(self, dark: bool):
+        """Match the Windows title bar to the theme picked in the app."""
+        try:
+            import ctypes
+
+            hwnd = window.native.Handle.ToInt32()
+            value = ctypes.c_int(1 if dark else 0)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(value), 4)  # DWMWA_USE_IMMERSIVE_DARK_MODE
+            # Redraw the frame now: SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+            ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)
+        except Exception:  # noqa: BLE001 - cosmetic only
+            pass
+
+
+def system_uses_dark_theme() -> bool:
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
+            return winreg.QueryValueEx(key, "AppsUseLightTheme")[0] == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def already_running(port: int) -> bool:
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/version", timeout=1) as r:
             return json.load(r).get("app") == "VideoLabeler"
     except Exception:  # noqa: BLE001
         return False
+
+
+def focus_running(port: int) -> bool:
+    """Ask the running copy to show its window. False if it has none (browser mode)."""
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/focus", method="POST")
+        with urllib.request.urlopen(req, timeout=3) as r:
+            return json.load(r).get("window", False)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def port_is_free(host: str, port: int) -> bool:
+    with socket.socket() as s:
+        return s.connect_ex(("127.0.0.1" if host == "0.0.0.0" else host, port)) != 0
+
+
+def run_desktop(url: str) -> bool:
+    """Show the app in a native window until it is closed. False if no window could be created."""
+    global window
+    try:
+        import webview
+    except ImportError:
+        return False
+    window = webview.create_window(
+        "Video Speaker Labeler",
+        url,
+        js_api=DesktopApi(),
+        width=1320,
+        height=860,
+        min_size=(960, 640),
+        background_color="#0e1016" if system_uses_dark_theme() else "#f5f6fa",
+    )
+    try:
+        # private_mode=False keeps the theme and UI preferences between runs.
+        webview.start(private_mode=False, storage_path=str(WEBVIEW_STORAGE))
+    except Exception:  # noqa: BLE001 - e.g. the WebView2 runtime is missing
+        window = None
+        return False
+    return True
 
 
 def main():
@@ -376,14 +482,16 @@ def main():
     parser.add_argument("--import", dest="import_file", help="Old sheet with Video_Name / Onscreen_Speaker (a/b)")
     parser.add_argument("--port", type=int, default=5000)
     parser.add_argument("--host", default="127.0.0.1", help="Use 0.0.0.0 to allow access from other PCs on the LAN")
-    parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--browser", action="store_true", help="Open in the web browser instead of an app window")
+    parser.add_argument("--no-browser", action="store_true", help="Only run the server (implies --browser)")
     args = parser.parse_args()
+    browser_mode = args.browser or args.no_browser
 
-    url = f"http://127.0.0.1:{args.port}"
     if already_running(args.port):
-        # Starting the app a second time (e.g. from the Start menu) just opens the running one.
+        # Starting the app a second time (e.g. from the Start menu) just shows the running one.
+        url = f"http://127.0.0.1:{args.port}"
         print(f"Video Speaker Labeler is already running: {url}")
-        if not args.no_browser:
+        if not focus_running(args.port) and not args.no_browser:
             webbrowser.open(url)
         return
 
@@ -399,11 +507,21 @@ def main():
     elif args.import_file:
         parser.error("--import requires --videos")
 
+    port = args.port if port_is_free(args.host, args.port) else 0  # 0: let the OS pick a free port
+    server = make_server(args.host, port, app, threaded=True)
+    url = f"http://127.0.0.1:{server.server_port}"
     print(f"Open   : {url}")
+
+    if not browser_mode:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        if run_desktop(url):
+            quit_app()  # the window was closed
+        # No window (pywebview or the WebView2 runtime is missing): use the browser instead.
+        server.shutdown()
     print("Keep this window open while labeling. Close it to quit the app.")
     if not args.no_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
-    app.run(host=args.host, port=args.port, debug=False, threaded=True)
+    server.serve_forever()
 
 
 if __name__ == "__main__":
