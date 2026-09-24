@@ -13,9 +13,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -33,11 +33,13 @@ jobs:
       - name: Build app
         run: pyinstaller packaging/VideoLabeler.spec --noconfirm
 
+      # PowerShell, not bash: Git Bash rewrites "/DAppVersion=..." into a file path.
       - name: Build installer
-        shell: bash
+        shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=$VERSION" installer/VideoLabeler.iss
+          $iscc = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe" | Select-Object -First 1).FullName
+          & $iscc "/DAppVersion=$env:VERSION" installer\VideoLabeler.iss
 
       - name: Publish release
         shell: bash

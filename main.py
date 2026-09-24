@@ -31,7 +31,7 @@ from pathlib import Path
 import pandas as pd
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
 
 FROZEN = getattr(sys, "frozen", False)  # running as the installed .exe
