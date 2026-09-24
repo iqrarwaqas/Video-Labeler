@@ -9,7 +9,16 @@ The label tells the model which diarized audio track belongs to the on-screen ac
 | Off-screen | **B** |
 | Unclear    | (blank; leave it out of training) |
 
-## Setup (once)
+## Install (Windows app)
+
+1. Download `VideoLabeler-Setup-<version>.exe` from the [latest release](https://github.com/iqrarwaqas/Video-Labeler/releases/latest) and run it. No admin rights are needed.
+2. Start **Video Speaker Labeler** from the Start menu. A console window opens along with the app in your browser. Keep the window open while labeling and close it to quit.
+
+**Updates:** when a new version is released, the app shows a banner. Click **Update now**: the app closes, installs the new version and reopens. Your labels and settings are kept.
+
+Windows may show "Windows protected your PC" because the installer isn't code-signed. Click **More info → Run anyway**.
+
+## Setup from source (once)
 
 ```bash
 pip install -r requirements.txt
@@ -62,3 +71,25 @@ The sidebar lists every video with a colored dot (green = on-screen, orange = of
 
 - **"This video can't be played in the browser"**: use Chrome or Edge. `.avi` and some `.mkv`/`.mov` codecs don't play in browsers. Convert them to MP4:
   `ffmpeg -i in.avi -c:v libx264 -c:a aac out.mp4`
+
+## Releasing a new version (maintainers)
+
+1. Update `__version__` in `main.py`, e.g. `"1.1.0"`, and commit.
+2. Tag and push the tag:
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+3. The **Release** GitHub Action builds `VideoLabeler-Setup-1.1.0.exe` and publishes it as a GitHub Release. Installed apps see the update the next time they start.
+
+The tag must match `__version__`, or the build fails. The repo must be public so that installed apps can check for updates and download them.
+
+To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isdl.php) and run:
+
+```bash
+pip install pyinstaller
+pyinstaller packaging/VideoLabeler.spec --noconfirm
+iscc /DAppVersion=1.1.0 installer\VideoLabeler.iss
+```
+
+The installer is written to `dist/`.
