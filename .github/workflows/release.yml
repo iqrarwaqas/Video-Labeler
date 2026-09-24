@@ -1,0 +1,46 @@
+name: Release
+
+# Push a version tag to build the Windows installer and publish a GitHub Release:
+#   git tag v1.1.0 && git push origin v1.1.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag matches __version__ in main.py
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          grep -q "^__version__ = \"$VERSION\"$" main.py || {
+            echo "::error::Tag $GITHUB_REF_NAME does not match __version__ in main.py"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build app
+        run: pyinstaller packaging/VideoLabeler.spec --noconfirm
+
+      - name: Build installer
+        shell: bash
+        run: |
+          choco install innosetup -y --no-progress
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=$VERSION" installer/VideoLabeler.iss
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "dist/VideoLabeler-Setup-$VERSION.exe" --title "Video Speaker Labeler $VERSION" --generate-notes

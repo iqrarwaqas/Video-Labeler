@@ -18,7 +18,12 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import threading
+import urllib.request
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -26,8 +31,17 @@ from pathlib import Path
 import pandas as pd
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 
-APP_DIR = Path(__file__).resolve().parent
-CONFIG_FILE = APP_DIR / ".labeler_config.json"
+__version__ = "1.0.0"
+GITHUB_REPO = "iqrarwaqas/Video-Labeler"
+
+FROZEN = getattr(sys, "frozen", False)  # running as the installed .exe
+# PyInstaller unpacks the bundled templates/static to sys._MEIPASS.
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+if FROZEN:
+    # The install folder isn't writable, so keep settings in the user's profile.
+    CONFIG_FILE = Path(os.environ.get("APPDATA", Path.home())) / "VideoLabeler" / "config.json"
+else:
+    CONFIG_FILE = RESOURCE_DIR / ".labeler_config.json"
 VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v"}
 LEGACY_OUTPUT_NAME = "labels.xlsx"  # used before projects had names
 
@@ -37,7 +51,7 @@ LABELS = {"onscreen", "offscreen", "unclear"}
 # is A when they speak first and B when the off-screen actor speaks first.
 DIARIZED = {"onscreen": "A", "offscreen": "B", "unclear": ""}
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(RESOURCE_DIR / "templates"), static_folder=str(RESOURCE_DIR / "static"))
 lock = threading.Lock()
 
 
@@ -163,6 +177,7 @@ def load_config() -> dict:
 
 
 def save_config(videos: str, output: str, name: str):
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_FILE.write_text(json.dumps({"project": name, "videos": videos, "output": output}, indent=2), encoding="utf-8")
 
 
@@ -182,12 +197,81 @@ def save_error(e: Exception):
     return jsonify({"ok": False, "error": msg}), 409
 
 
+# ---------------------------------------------------------------- updates
+
+_update_info: dict | None = None
+
+
+def parse_version(tag: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", tag)[:3])
+
+
+def github_get(url: str, timeout: float):
+    req = urllib.request.Request(url, headers={"User-Agent": f"VideoLabeler/{__version__}"})
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def check_update() -> dict:
+    """Compare this version with the latest GitHub release (looked up once per run)."""
+    global _update_info
+    if _update_info is None:
+        info = {"current": __version__, "available": False}
+        try:
+            with github_get(f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest", timeout=5) as r:
+                release = json.load(r)
+            installer = next((a["browser_download_url"] for a in release.get("assets", [])
+                              if a["name"].lower().endswith(".exe")), None)
+            info.update(
+                latest=release["tag_name"].lstrip("v"),
+                url=release["html_url"],
+                installer=installer,
+                available=parse_version(release["tag_name"]) > parse_version(__version__),
+            )
+        except Exception:  # noqa: BLE001 - offline or no releases yet: just don't offer an update
+            pass
+        _update_info = info
+    return {**_update_info, "can_install": FROZEN and bool(_update_info.get("installer"))}
+
+
+def quit_app():
+    lock.acquire()  # let a label save that is in progress finish first
+    os._exit(0)
+
+
 # ---------------------------------------------------------------- routes
 
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=__version__)
+
+
+@app.get("/api/version")
+def api_version():
+    return jsonify({"app": "VideoLabeler", "version": __version__})
+
+
+@app.get("/api/update")
+def api_update():
+    return jsonify(check_update())
+
+
+@app.post("/api/update/install")
+def api_update_install():
+    info = check_update()
+    if not (info["available"] and info["can_install"]):
+        return jsonify({"ok": False, "error": "There is no update to install."}), 400
+    target = Path(tempfile.gettempdir()) / Path(info["installer"]).name
+    try:
+        with github_get(info["installer"], timeout=60) as r, open(target, "wb") as f:
+            shutil.copyfileobj(r, f)
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"ok": False, "error": f"Download failed: {e}"}), 502
+    # The installer replaces the app's files, so this process has to exit.
+    # /RELAUNCH=1 makes the installer start the new version when it's done.
+    subprocess.Popen([str(target), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RELAUNCH=1"])
+    threading.Timer(1.0, quit_app).start()
+    return jsonify({"ok": True})
 
 
 @app.get("/api/state")
@@ -275,8 +359,17 @@ def video(file):
 # ---------------------------------------------------------------- entry
 
 
+def already_running(port: int) -> bool:
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/version", timeout=1) as r:
+            return json.load(r).get("app") == "VideoLabeler"
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Label who speaks first (on-screen / off-screen) in videos.")
+    parser.add_argument("--version", action="version", version=f"Video Speaker Labeler {__version__}")
     parser.add_argument("--videos", help="Folder containing the videos")
     parser.add_argument("--project", default="", help="Project name (default: the videos folder name)")
     parser.add_argument("--output", help="Folder for <project>_labels.xlsx (default: <videos>/../output)")
@@ -286,6 +379,15 @@ def main():
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
+    url = f"http://127.0.0.1:{args.port}"
+    if already_running(args.port):
+        # Starting the app a second time (e.g. from the Start menu) just opens the running one.
+        print(f"Video Speaker Labeler is already running: {url}")
+        if not args.no_browser:
+            webbrowser.open(url)
+        return
+
+    print(f"Video Speaker Labeler {__version__}")
     if args.videos:
         p = open_project(args.videos, args.output or "", args.project)
         print(f"Project: {p.name}")
@@ -297,8 +399,8 @@ def main():
     elif args.import_file:
         parser.error("--import requires --videos")
 
-    url = f"http://127.0.0.1:{args.port}"
     print(f"Open   : {url}")
+    print("Keep this window open while labeling. Close it to quit the app.")
     if not args.no_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     app.run(host=args.host, port=args.port, debug=False, threaded=True)

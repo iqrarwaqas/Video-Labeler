@@ -15,6 +15,8 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
+  display: flex;
+  flex-direction: column;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -57,7 +59,7 @@ code { background: #eef0f4; padding: 1px 4px; border-radius: 4px; }
 
 /* ---------------------------------------------------------------- setup */
 
-.setup { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.setup { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .setup-card { width: 100%; max-width: 520px; padding: 28px; }
 .setup-card .logo { font-size: 40px; }
 .setup-card h1 { margin: 6px 0 4px; font-size: 22px; }
@@ -69,6 +71,7 @@ code { background: #eef0f4; padding: 1px 4px; border-radius: 4px; }
 }
 .setup-card input:focus { outline: 2px solid #c5d0fa; border-color: var(--primary); }
 .setup-card .btn.wide { margin-top: 22px; }
+.setup-card .version { margin: 14px 0 0; text-align: center; }
 .error {
   margin-top: 14px; padding: 9px 12px; border-radius: 8px;
   background: #fff5f5; border: 1px solid #ffc9c9; color: var(--danger);
@@ -76,7 +79,7 @@ code { background: #eef0f4; padding: 1px 4px; border-radius: 4px; }
 
 /* ---------------------------------------------------------------- layout */
 
-.app { height: 100%; display: flex; flex-direction: column; }
+.app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--border);
@@ -176,6 +179,14 @@ kbd {
   display: inline-block; padding: 0 5px; border: 1px solid var(--border); border-bottom-width: 2px;
   border-radius: 4px; background: var(--card); font-family: inherit; font-size: 11px;
 }
+
+/* ---------------------------------------------------------------- update banner */
+
+.update-banner {
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-shrink: 0;
+  padding: 7px 16px; background: #edf2ff; border-bottom: 1px solid #d0dbff; font-size: 13px;
+}
+.update-banner a.btn { text-decoration: none; }
 
 /* ---------------------------------------------------------------- toast */
 

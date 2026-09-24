@@ -9,6 +9,14 @@
 </head>
 <body>
 
+<!-- ============ Update banner ============ -->
+<div id="update-banner" class="update-banner hidden">
+  <span id="update-text"></span>
+  <button id="update-install" class="btn primary small-btn hidden">Update now</button>
+  <a id="update-link" class="btn ghost small-btn" target="_blank" rel="noopener">View release</a>
+  <button id="update-dismiss" class="icon-btn" title="Remind me later">×</button>
+</div>
+
 <!-- ============ Setup screen ============ -->
 <section id="setup" class="setup hidden">
   <div class="card setup-card">
@@ -26,6 +34,7 @@
     </label>
     <div id="setup-error" class="error hidden"></div>
     <button id="setup-go" class="btn primary wide">Open project</button>
+    <p class="muted small version">Version {{ version }}</p>
   </div>
 </section>
 

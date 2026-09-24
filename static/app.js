@@ -269,4 +269,40 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------------------------------------------------------------- updates
+
+let latestVersion = null;
+
+async function checkUpdate() {
+  let info;
+  try { info = await api("GET", "/api/update"); } catch (_) { return; }
+  if (!info.available || sessionStorage.getItem("updateDismissed") === info.latest) return;
+  latestVersion = info.latest;
+  $("update-text").textContent = `Version ${info.latest} is available (you have ${info.current}).`;
+  $("update-install").classList.toggle("hidden", !info.can_install);
+  $("update-link").href = info.url;
+  $("update-banner").classList.remove("hidden");
+}
+
+$("update-install").addEventListener("click", async () => {
+  const btn = $("update-install");
+  btn.disabled = true;
+  $("update-text").textContent = `Downloading version ${latestVersion}…`;
+  try {
+    await api("POST", "/api/update/install");
+    $("update-text").textContent =
+      "Installing the update. The app closes and reopens in a new tab when it's done. You can close this tab.";
+    $("update-link").classList.add("hidden");
+  } catch (e) {
+    btn.disabled = false;
+    $("update-text").textContent = `Version ${latestVersion} is available.`;
+    toast(e.message, true);
+  }
+});
+$("update-dismiss").addEventListener("click", () => {
+  sessionStorage.setItem("updateDismissed", latestVersion);
+  $("update-banner").classList.add("hidden");
+});
+
 load().catch((e) => toast(e.message, true));
+checkUpdate();
