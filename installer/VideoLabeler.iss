@@ -26,6 +26,7 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 UninstallDisplayIcon={app}\VideoLabeler.exe
+SetupIconFile=..\packaging\icon.ico
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"

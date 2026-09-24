@@ -12,7 +12,8 @@ a = Analysis(
     datas=[(str(ROOT / "templates"), "templates"), (str(ROOT / "static"), "static")],
     # pandas loads the Excel engine at runtime, so PyInstaller can't see it.
     hiddenimports=["openpyxl"],
-    excludes=["tkinter", "matplotlib", "IPython", "pytest"],
+    # Only the Windows (WinForms + WebView2) backend of pywebview is used.
+    excludes=["tkinter", "matplotlib", "IPython", "pytest", "PyQt5", "PyQt6", "PySide2", "PySide6", "gi", "cefpython3"],
 )
 pyz = PYZ(a.pure)
 exe = EXE(
@@ -21,7 +22,8 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name="VideoLabeler",
-    console=True,  # the console window is how users quit the app
+    console=False,  # a desktop app: the pywebview window is the whole UI
+    icon=str(ROOT / "packaging" / "icon.ico"),
     upx=False,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="VideoLabeler", upx=False)

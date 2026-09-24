@@ -1,6 +1,6 @@
 # Video Speaker Labeler
 
-A small local tool for labeling **who speaks first** in each video: the **on-screen** actor or the **off-screen** speaker.
+A small Windows desktop app for labeling **who speaks first** in each video: the **on-screen** actor or the **off-screen** speaker.
 The label tells the model which diarized audio track belongs to the on-screen actor (diarization tags the first speaker as **A**):
 
 | Who speaks first | On-screen actor's diarized track |
@@ -12,9 +12,13 @@ The label tells the model which diarized audio track belongs to the on-screen ac
 ## Install (Windows app)
 
 1. Download `VideoLabeler-Setup-<version>.exe` from the [latest release](https://github.com/iqrarwaqas/Video-Labeler/releases/latest) and run it. No admin rights are needed.
-2. Start **Video Speaker Labeler** from the Start menu. A console window opens along with the app in your browser. Keep the window open while labeling and close it to quit.
+2. Start **Video Speaker Labeler** from the Start menu. The app opens in its own window; close the window to quit.
 
-**Updates:** when a new version is released, the app shows a banner. Click **Update now**: the app closes, installs the new version and reopens. Your labels and settings are kept.
+The app uses the Microsoft Edge WebView2 runtime, which comes with Windows 11 and up-to-date Windows 10.
+
+**Updates:** the app checks for a new version when it starts and shows a banner when one is available. You can also check at any time with **⚙ Settings → Check for updates** (or **Check for updates** on the start screen). Click **Update now**: the app closes, installs the new version and reopens. Your labels and settings are kept.
+
+**Theme:** pick **System**, **Light** or **Dark** in **⚙ Settings**. **System** follows the Windows setting.
 
 Windows may show "Windows protected your PC" because the installer isn't code-signed. Click **More info → Run anyway**.
 
@@ -30,7 +34,7 @@ pip install -r requirements.txt
 python main.py --videos "D:\data\videos" --project "Batch_01"
 ```
 
-The app opens in your browser at http://127.0.0.1:5000. You can also run `python main.py` with no arguments and fill in the project name and folders on the start screen. The app remembers the last project you used.
+The app opens in its own window. You can also run `python main.py` with no arguments and fill in the project name and folders on the start screen (**Browse** opens a folder picker). The app remembers the last project you used.
 
 Options:
 
@@ -40,8 +44,9 @@ Options:
 | `--project NAME` | Project name, shown in the app and used for the output file name (default: the videos folder name) |
 | `--output DIR` | Where `<project>_labels.xlsx` is written (default: an `output` folder next to the videos folder) |
 | `--import FILE` | Seed labels from the old sheet (`Video_Name`, `Onscreen_Speaker` = a/b). Existing labels are never overwritten. |
-| `--port N` | Port (default 5000) |
-| `--host 0.0.0.0` | Let other PCs on the network open the app |
+| `--browser` | Open the app in the web browser instead of its own window |
+| `--port N` | Port of the local server (default 5000) |
+| `--host 0.0.0.0` | Let other PCs on the network open the app in their browser at `http://<this-pc>:<port>` |
 
 ## How to label
 
@@ -50,7 +55,7 @@ Options:
 3. The label is saved straight away and the next video opens.
 
 Shortcuts: `←` / `→` previous/next · `Space` play/pause · `R` replay · `N` next unlabeled video.
-The sidebar lists every video with a colored dot (green = on-screen, orange = off-screen, grey = unclear).
+The sidebar lists every video with a colored dot (green = on-screen, orange = off-screen, grey = unclear), with a count per label. Use **All / To do / Done** to filter the list. **⚙ Settings → Show labels file** opens the output folder with the Excel file selected.
 
 **Resume:** open the same project again and the app continues at the first unlabeled video. If you go back to a video you already labeled, its label is highlighted. Click another option to change it, or click **Clear label**.
 
@@ -69,7 +74,8 @@ The sidebar lists every video with a colored dot (green = on-screen, orange = of
 
 ## Troubleshooting
 
-- **"This video can't be played in the browser"**: use Chrome or Edge. `.avi` and some `.mkv`/`.mov` codecs don't play in browsers. Convert them to MP4:
+- **The app opens in the browser instead of its own window**: the WebView2 runtime is missing. Install it from [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/) and start the app again.
+- **"This video can't be played here"**: `.avi` and some `.mkv`/`.mov` codecs can't be played. Convert them to MP4:
   `ffmpeg -i in.avi -c:v libx264 -c:a aac out.mp4`
 
 ## Releasing a new version (maintainers)
@@ -93,3 +99,5 @@ iscc /DAppVersion=1.1.0 installer\VideoLabeler.iss
 ```
 
 The installer is written to `dist/`.
+
+The app icon is `packaging/icon.ico` (installer and `.exe`) and `static/icon.svg` (inside the app). If you change the design, update `static/icon.svg` and redraw the `.ico` with `python packaging/make_icon.py` (needs Pillow).
