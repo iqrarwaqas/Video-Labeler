@@ -43,4 +43,11 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "dist/VideoLabeler-Setup-$VERSION.exe" --title "Video Speaker Labeler $VERSION" --generate-notes
+        run: |
+          SETUP="dist/VideoLabeler-Setup-$VERSION.exe"
+          # The release may already exist if it was created on the GitHub website.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$SETUP" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$SETUP" --title "Video Speaker Labeler $VERSION" --generate-notes
+          fi
