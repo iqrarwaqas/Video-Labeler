@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Speaker Labeler</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- ============ Setup screen ============ -->
+<section id="setup" class="setup hidden">
+  <div class="card setup-card">
+    <div class="logo">🎬</div>
+    <h1>Video Speaker Labeler</h1>
+    <p class="muted">Pick the folder with your videos. The labels are saved to <code>&lt;project&gt;_labels.xlsx</code> in the output folder. If you reopen the same project later, you carry on where you stopped.</p>
+    <label>Project name <span class="muted">(optional — default: the videos folder name)</span>
+      <input id="setup-project" type="text" placeholder="e.g. Batch_01" autocomplete="off">
+    </label>
+    <label>Videos folder
+      <input id="setup-videos" type="text" placeholder="D:\data\videos" autocomplete="off">
+    </label>
+    <label>Output folder <span class="muted">(optional — default: an <code>output</code> folder next to the videos folder)</span>
+      <input id="setup-output" type="text" placeholder="D:\data\output" autocomplete="off">
+    </label>
+    <div id="setup-error" class="error hidden"></div>
+    <button id="setup-go" class="btn primary wide">Open project</button>
+  </div>
+</section>
+
+<!-- ============ Labeler ============ -->
+<section id="labeler" class="app hidden">
+  <header class="topbar">
+    <button id="toggle-sidebar" class="icon-btn" title="Show / hide video list">☰</button>
+    <div class="title">
+      <div class="app-name">Video Speaker Labeler <span id="project-name" class="project-chip"></span></div>
+      <div id="project-path" class="muted small"></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-text"><span id="count-labeled">0</span> / <span id="count-total">0</span> labeled</div>
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+    </div>
+    <button id="change-project" class="btn ghost small-btn" title="Open another project or folder">Change project</button>
+  </header>
+
+  <div class="body">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <input id="search" type="search" placeholder="Search videos…">
+        <label class="check"><input id="only-unlabeled" type="checkbox"> Unlabeled only</label>
+      </div>
+      <ul id="video-list" class="video-list"></ul>
+    </aside>
+
+    <main class="main">
+      <div id="empty" class="card empty hidden">No video files found in this folder.</div>
+
+      <div id="work" class="work">
+        <div class="player-card card">
+          <video id="player" controls autoplay playsinline></video>
+          <div id="video-error" class="video-error hidden">This video can't be played in the browser. Try Chrome/Edge, or convert it to MP4 (H.264/AAC).</div>
+        </div>
+
+        <div class="nav-row">
+          <button id="prev" class="btn nav" title="Previous (←)">◀ Prev</button>
+          <div class="now">
+            <div id="current-name" class="current-name">—</div>
+            <div class="muted small"><span id="current-pos">0 / 0</span> · <span id="current-status" class="status-badge">Not labeled</span></div>
+          </div>
+          <button id="next" class="btn nav" title="Next (→)">Next ▶</button>
+        </div>
+
+        <div class="question card">
+          <h2>Who speaks first?</h2>
+          <div class="choices">
+            <button class="choice onscreen" data-label="onscreen">
+              <span class="key">1</span>
+              <span class="choice-title">On-screen</span>
+              <span class="choice-sub">Actor in the video speaks first → speaker <b>A</b></span>
+            </button>
+            <button class="choice offscreen" data-label="offscreen">
+              <span class="key">2</span>
+              <span class="choice-title">Off-screen</span>
+              <span class="choice-sub">Voice not in the video speaks first → on-screen actor is <b>B</b></span>
+            </button>
+            <button class="choice unclear" data-label="unclear">
+              <span class="key">3</span>
+              <span class="choice-title">Unclear / Skip</span>
+              <span class="choice-sub">Only one speaker, overlapping speech, no audio…</span>
+            </button>
+          </div>
+          <div class="options-row">
+            <label class="check"><input id="auto-advance" type="checkbox" checked> Go to the next video after labeling</label>
+            <button id="clear-label" class="btn ghost small-btn">Clear label</button>
+            <button id="jump-unlabeled" class="btn ghost small-btn" title="N">Next unlabeled ⏭</button>
+          </div>
+        </div>
+
+        <div class="shortcuts muted small">
+          <kbd>←</kbd>/<kbd>→</kbd> prev/next · <kbd>1</kbd> on-screen · <kbd>2</kbd> off-screen · <kbd>3</kbd> unclear ·
+          <kbd>Space</kbd> play/pause · <kbd>R</kbd> replay · <kbd>N</kbd> next unlabeled
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

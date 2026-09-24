@@ -18,17 +18,18 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python main.py --videos "D:\data\videos"
+python main.py --videos "D:\data\videos" --project "Batch_01"
 ```
 
-The app opens in your browser at http://127.0.0.1:5000. You can also run `python main.py` with no arguments and type the folder path on the start screen. The app remembers the last folder you used.
+The app opens in your browser at http://127.0.0.1:5000. You can also run `python main.py` with no arguments and fill in the project name and folders on the start screen. The app remembers the last project you used.
 
 Options:
 
 | Flag | Meaning |
 |---|---|
 | `--videos DIR` | Folder with the videos (`.mp4 .mov .webm .mkv .avi .m4v`) |
-| `--output DIR` | Where `labels.xlsx` is written (default: an `output` folder next to the videos folder) |
+| `--project NAME` | Project name, shown in the app and used for the output file name (default: the videos folder name) |
+| `--output DIR` | Where `<project>_labels.xlsx` is written (default: an `output` folder next to the videos folder) |
 | `--import FILE` | Seed labels from the old sheet (`Video_Name`, `Onscreen_Speaker` = a/b). Existing labels are never overwritten. |
 | `--port N` | Port (default 5000) |
 | `--host 0.0.0.0` | Let other PCs on the network open the app |
@@ -42,18 +43,20 @@ Options:
 Shortcuts: `←` / `→` previous/next · `Space` play/pause · `R` replay · `N` next unlabeled video.
 The sidebar lists every video with a colored dot (green = on-screen, orange = off-screen, grey = unclear).
 
-**Resume:** open the same folder again and the app continues at the first unlabeled video. If you go back to a video you already labeled, its label is highlighted. Click another option to change it, or click **Clear label**.
+**Resume:** open the same project again and the app continues at the first unlabeled video. If you go back to a video you already labeled, its label is highlighted. Click another option to change it, or click **Clear label**.
 
-## Output: `output/labels.xlsx`
+## Output: `output/<project>_labels.xlsx`
 
-| Video_Name | Video_File | First_Speaker | Onscreen_Diarized_Label | Labeled_At |
-|---|---|---|---|---|
-| video1 | video1.mp4 | onscreen | A | 2026-09-24 13:20:00 |
-| video4 | video4.mp4 | offscreen | B | 2026-09-24 13:21:10 |
+| Project | Video_Name | Video_File | First_Speaker | Onscreen_Diarized_Label | Labeled_At |
+|---|---|---|---|---|---|
+| Batch_01 | video1 | video1.mp4 | onscreen | A | 2026-09-24 13:20:00 |
+| Batch_01 | video4 | video4.mp4 | offscreen | B | 2026-09-24 13:21:10 |
 
 - The file is updated after every click, and each video has only one row (changing a label updates that row).
-- **Close `labels.xlsx` in Excel while labeling.** Excel locks the file. If it's open, the app shows a warning and nothing is lost: close Excel and click the label again.
-- Use one project folder per person. Two people must not label into the same `labels.xlsx` at the same time.
+- Each project has its own file, so several projects can share one output folder.
+- If the output folder has an old `labels.xlsx` from before project names existed, its labels are copied into the first project you open there. The old file is left untouched.
+- **Close the labels file in Excel while labeling.** Excel locks the file. If it's open, the app shows a warning and nothing is lost: close Excel and click the label again.
+- Use one project per person. Two people must not label into the same project file at the same time.
 
 ## Troubleshooting
 
