@@ -40,7 +40,7 @@ from werkzeug.serving import make_server
 import splitter
 from common import APP_DATA, FROZEN, RESOURCE_DIR, list_videos, load_config, natural_key, update_config
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
 
 # Where the app window keeps its local storage (theme and UI preferences).
