@@ -33,14 +33,19 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory
-from werkzeug.serving import make_server
+from common import APP_DATA, FROZEN, RESOURCE_DIR, list_videos, load_config, natural_key, start_again_later, update_config
 
-import splitter
-from common import APP_DATA, FROZEN, RESOURCE_DIR, list_videos, load_config, natural_key, update_config
+try:
+    import pandas as pd
+    from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+    from werkzeug.serving import make_server
 
-__version__ = "2.0.0"
+    import splitter
+except ImportError:
+    start_again_later()  # just after an update the new files can still be locked
+    raise
+
+__version__ = "2.0.1"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
 
 # Where the app window keeps its local storage (theme and UI preferences).

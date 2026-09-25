@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 FROZEN = getattr(sys, "frozen", False)  # running as the installed .exe
@@ -18,6 +20,25 @@ if FROZEN:
 else:
     CONFIG_FILE = RESOURCE_DIR / ".labeler_config.json"
 VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v"}
+START_TRIES = 5
+
+
+def start_again_later():
+    """Start the installed app again in a moment, and exit this copy.
+
+    Right after an update the installer starts the new version while Windows
+    Defender may still be scanning the new files. Loading a library then fails
+    ("being used by another process"), so try again a few times before giving up.
+    Returns only when it's time to give up (or when running from source).
+    """
+    tries = int(os.environ.get("VIDEOLABELER_START_TRY", "1"))
+    if not FROZEN or tries >= START_TRIES:
+        return
+    time.sleep(2)
+    # PYINSTALLER_RESET_ENVIRONMENT: start as a new app, not as a child of this one.
+    env = {**os.environ, "VIDEOLABELER_START_TRY": str(tries + 1), "PYINSTALLER_RESET_ENVIRONMENT": "1"}
+    subprocess.Popen([sys.executable, *sys.argv[1:]], env=env)
+    os._exit(0)
 
 
 def natural_key(name: str):
