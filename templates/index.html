@@ -42,16 +42,30 @@
   <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-start" viewBox="0 0 24 24"><path d="M9 4H6v16h3"/><path d="M11 12h9"/><path d="m16 8 4 4-4 4"/></symbol>
+  <symbol id="i-end" viewBox="0 0 24 24"><path d="M15 4h3v16h-3"/><path d="M4 12h9"/><path d="m9 8 4 4-4 4"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
 </svg>
 
 <!-- ============ Header (always visible) ============ -->
 <header class="topbar">
-  <button id="toggle-sidebar" class="icon-btn project-only" title="Show / hide video list"><svg class="ic"><use href="#i-sidebar"/></svg></button>
+  <button id="home-btn" class="icon-btn hidden" title="All tools"><svg class="ic"><use href="#i-home"/></svg></button>
+  <button id="toggle-sidebar" class="icon-btn project-any" title="Show / hide video list"><svg class="ic"><use href="#i-sidebar"/></svg></button>
   <div class="brand">
     <img class="brand-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
-    <span class="brand-name">Speaker Labeler</span>
+    <span id="brand-name" class="brand-name">Speaker Labeler</span>
   </div>
-  <div class="project project-only">
+  <div class="project project-any">
     <span id="project-name" class="project-chip"></span>
     <span id="project-path" class="project-path"></span>
   </div>
@@ -75,6 +89,8 @@
       <button id="menu-update" class="menu-item" role="menuitem"><svg class="ic"><use href="#i-refresh"/></svg><span>Check for updates</span></button>
       <button id="menu-reveal" class="menu-item project-only" role="menuitem"><svg class="ic"><use href="#i-sheet"/></svg><span>Show labels file</span></button>
       <button id="menu-change" class="menu-item project-only" role="menuitem"><svg class="ic"><use href="#i-folder"/></svg><span>Change project…</span></button>
+      <button id="menu-split-reveal" class="menu-item split-only" role="menuitem"><svg class="ic"><use href="#i-folder"/></svg><span>Show output folder</span></button>
+      <button id="menu-split-change" class="menu-item split-only" role="menuitem"><svg class="ic"><use href="#i-folder"/></svg><span>Change folders…</span></button>
       <div class="menu-sep"></div>
       <div class="menu-foot">Video Speaker Labeler · v{{ version }}</div>
     </div>
@@ -90,9 +106,37 @@
   <button id="update-dismiss" class="icon-btn sm" title="Remind me later"><svg class="ic"><use href="#i-x"/></svg></button>
 </div>
 
+<!-- ============ Home: pick a tool ============ -->
+<section id="home" class="setup hidden">
+  <div class="home">
+    <img class="setup-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
+    <h1>What do you want to do?</h1>
+    <p class="muted lead">Cut long videos into clips first, then label who speaks first in each clip.</p>
+    <div class="tools">
+      <button class="tool card splitter" data-mode="splitter">
+        <span class="tool-step">Step 1</span>
+        <span class="tool-icon"><svg class="ic"><use href="#i-scissors"/></svg></span>
+        <span class="tool-title">Video Splitter</span>
+        <span class="tool-sub">Mark segments on a timeline and export each one as a clip into your dataset folder.</span>
+      </button>
+      <button class="tool card labeler" data-mode="labeler">
+        <span class="tool-step">Step 2</span>
+        <span class="tool-icon"><svg class="ic"><use href="#i-tag"/></svg></span>
+        <span class="tool-title">Video Labeler</span>
+        <span class="tool-sub">Watch each clip and label who speaks first: the on-screen actor or an off-screen voice.</span>
+      </button>
+    </div>
+    <div class="setup-foot">
+      <span>Version {{ version }}</span>
+      <button id="home-update" class="link-btn"><svg class="ic"><use href="#i-refresh"/></svg><span>Check for updates</span></button>
+    </div>
+  </div>
+</section>
+
 <!-- ============ Setup screen ============ -->
 <section id="setup" class="setup hidden">
   <div class="setup-card card">
+    <button type="button" class="link-btn back" data-go-home><svg class="ic"><use href="#i-back"/></svg>All tools</button>
     <img class="setup-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
     <h1>Open a project</h1>
     <p class="muted lead">Pick the folder with your videos. Labels are saved to <code>&lt;project&gt;_labels.xlsx</code> in the output folder, and reopening a project continues where you stopped.</p>
@@ -111,7 +155,7 @@
     <label class="field">
       <span class="field-label">Output folder <span class="opt">optional</span></span>
       <span class="input-row">
-        <input id="setup-output" type="text" placeholder="Defaults to an output folder next to the videos folder" autocomplete="off" spellcheck="false">
+        <input id="setup-output" type="text" placeholder="Defaults to an output folder next to the videos folder" autocomplete="off" spellcheck="false" data-start-from="setup-videos">
         <button type="button" class="btn desktop-only" data-browse="setup-output"><svg class="ic"><use href="#i-folder"/></svg>Browse</button>
       </span>
     </label>
@@ -124,6 +168,134 @@
       <button id="setup-update" class="link-btn"><svg class="ic"><use href="#i-refresh"/></svg><span>Check for updates</span></button>
     </div>
   </div>
+</section>
+
+<!-- ============ Splitter setup ============ -->
+<section id="split-setup" class="setup hidden">
+  <div class="setup-card card">
+    <button type="button" class="link-btn back" data-go-home><svg class="ic"><use href="#i-back"/></svg>All tools</button>
+    <img class="setup-logo" src="{{ url_for('static', filename='icon.svg') }}" alt="">
+    <h1>Split long videos</h1>
+    <p class="muted lead">Pick the folder with the long videos and the dataset folder for the clips. Clips are named <code>&lt;video&gt;_1.mp4</code>, <code>&lt;video&gt;_2.mp4</code>, … Your segments are saved, so you can stop and continue later.</p>
+
+    <label class="field">
+      <span class="field-label">Long videos folder</span>
+      <span class="input-row">
+        <input id="split-source" type="text" placeholder="D:\data\long videos" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn desktop-only" data-browse="split-source"><svg class="ic"><use href="#i-folder"/></svg>Browse</button>
+      </span>
+    </label>
+    <label class="field">
+      <span class="field-label">Output (dataset) folder</span>
+      <span class="input-row">
+        <input id="split-output" type="text" placeholder="D:\data\videos" autocomplete="off" spellcheck="false" data-start-from="split-source">
+        <button type="button" class="btn desktop-only" data-browse="split-output"><svg class="ic"><use href="#i-folder"/></svg>Browse</button>
+      </span>
+    </label>
+
+    <div id="split-error" class="alert error hidden"></div>
+    <button id="split-go" class="btn primary lg wide">Open folder</button>
+  </div>
+</section>
+
+<!-- ============ Splitter ============ -->
+<section id="splitter" class="app hidden">
+  <aside id="split-sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <div class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="split-search" type="search" placeholder="Search videos" spellcheck="false">
+      </div>
+      <div class="stats">
+        <span class="stat split" title="Videos with exported clips"><i class="dot split"></i><b id="split-stat-done">0</b> Split</span>
+        <span class="stat unclear" title="Videos with segments that aren't exported yet"><i class="dot pending"></i><b id="split-stat-pending">0</b> In progress</span>
+      </div>
+    </div>
+    <ul id="split-list" class="video-list"></ul>
+    <div id="split-list-empty" class="list-empty hidden">No matching videos</div>
+  </aside>
+
+  <main class="main">
+    <div id="split-empty" class="empty card hidden">
+      <svg class="ic xl"><use href="#i-video"/></svg>
+      <h2>No videos found</h2>
+      <p class="muted">This folder has no <code>.mp4 .mov .webm .mkv .avi .m4v</code> files.</p>
+      <button id="split-empty-change" class="btn">Choose another folder</button>
+    </div>
+
+    <div id="split-work" class="work wide">
+      <div class="player-card">
+        <video id="split-player" controls playsinline></video>
+        <div id="split-video-error" class="video-error hidden"><svg class="ic"><use href="#i-alert"/></svg>This video can't be played here. Convert it to MP4 (H.264/AAC).</div>
+      </div>
+
+      <div class="split-head">
+        <div id="split-name" class="current-name">—</div>
+        <div class="now-meta"><span id="split-time">0:00.000 / 0:00</span><span id="split-save" class="badge">Saved</span></div>
+      </div>
+
+      <div class="timeline card">
+        <div class="tl-toolbar">
+          <button id="tl-in" class="btn sm" title="Start a segment at the playhead (I)"><svg class="ic"><use href="#i-start"/></svg>Start<kbd>I</kbd></button>
+          <button id="tl-out" class="btn sm" title="End the segment at the playhead (O)"><svg class="ic"><use href="#i-end"/></svg>End<kbd>O</kbd></button>
+          <button id="tl-marker" class="btn sm" title="Add a split marker at the playhead (M)"><svg class="ic"><use href="#i-flag"/></svg>Marker<kbd>M</kbd></button>
+          <button id="tl-from-markers" class="btn ghost sm" title="Cut the whole video into back-to-back pieces at the markers">Segments from markers</button>
+          <span id="tl-pending" class="badge pending hidden"></span>
+          <div class="spacer"></div>
+          <button id="tl-delete" class="icon-btn sm" title="Delete selected (Delete)"><svg class="ic"><use href="#i-trash"/></svg></button>
+          <button id="tl-undo" class="icon-btn sm" title="Undo (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
+          <span class="tl-sep"></span>
+          <button id="tl-zoom-out" class="icon-btn sm" title="Zoom out (-)"><svg class="ic"><use href="#i-minus"/></svg></button>
+          <span id="tl-zoom-label" class="tl-zoom-label">Fit</span>
+          <button id="tl-zoom-in" class="icon-btn sm" title="Zoom in (+)"><svg class="ic"><use href="#i-plus"/></svg></button>
+          <button id="tl-fit" class="icon-btn sm" title="Show the whole video (0)"><svg class="ic"><use href="#i-fit"/></svg></button>
+        </div>
+        <div id="tl-scroll" class="tl-scroll">
+          <div id="tl-content" class="tl-content">
+            <div id="tl-ruler" class="tl-ruler"></div>
+            <div id="tl-track" class="tl-track"></div>
+            <div id="tl-playhead" class="tl-playhead"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="segments card">
+        <div class="seg-head">
+          <h2>Segments <span id="seg-count" class="badge">0</span></h2>
+          <span id="seg-total" class="muted"></span>
+          <div class="spacer"></div>
+          <button id="seg-clear" class="btn ghost sm"><svg class="ic"><use href="#i-eraser"/></svg>Clear all</button>
+          <button id="export-btn" class="btn primary"><svg class="ic"><use href="#i-scissors"/></svg>Export clips</button>
+        </div>
+        <div id="export-progress" class="export hidden">
+          <div class="export-text"><span id="export-text"></span><button id="export-cancel" class="btn ghost sm">Cancel</button></div>
+          <div class="progress"><div id="export-bar" class="progress-bar"></div></div>
+        </div>
+        <div id="export-done" class="export-done hidden">
+          <svg class="ic"><use href="#i-check"/></svg><span id="export-done-text"></span>
+          <button id="open-labeler" class="btn sm"><svg class="ic"><use href="#i-tag"/></svg>Open in Labeler</button>
+        </div>
+        <div id="export-error" class="alert error hidden"></div>
+        <table class="seg-table">
+          <thead><tr><th>#</th><th>Start</th><th>End</th><th>Length</th><th>Clip</th><th></th></tr></thead>
+          <tbody id="seg-body"></tbody>
+        </table>
+        <div id="seg-empty" class="list-empty">No segments yet. Play the video and press <kbd>I</kbd> where a part starts and <kbd>O</kbd> where it ends, or drop markers with <kbd>M</kbd> and click <b>Segments from markers</b>.</div>
+      </div>
+
+      <div class="shortcuts">
+        <svg class="ic"><use href="#i-keyboard"/></svg>
+        <span><kbd>Space</kbd> play / pause</span>
+        <span><kbd>←</kbd><kbd>→</kbd> 5 s (<kbd>Shift</kbd> 1 s)</span>
+        <span><kbd>,</kbd><kbd>.</kbd> frame</span>
+        <span><kbd>I</kbd><kbd>O</kbd> start / end</span>
+        <span><kbd>M</kbd> marker</span>
+        <span><kbd>Del</kbd> delete</span>
+        <span><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span>
+        <span><kbd>Ctrl</kbd>+wheel zoom</span>
+      </div>
+    </div>
+  </main>
 </section>
 
 <!-- ============ Labeler ============ -->
@@ -227,5 +399,6 @@
 <div id="toast" class="toast hidden"><svg class="ic"><use id="toast-icon" href="#i-check"/></svg><span id="toast-text"></span></div>
 
 <script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ url_for('static', filename='splitter.js') }}"></script>
 </body>
 </html>

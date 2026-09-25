@@ -9,6 +9,13 @@ The label tells the model which diarized audio track belongs to the on-screen ac
 | Off-screen | **B** |
 | Unclear    | (blank; leave it out of training) |
 
+The app has two tools, picked on the start screen:
+
+1. **Video Splitter**: cut long videos (30–50+ min, where the off-screen speaker keeps changing) into short clips. See [Split long videos](#split-long-videos).
+2. **Video Labeler**: label who speaks first in each clip. See [How to label](#how-to-label).
+
+The **⌂** button at the top left goes back to the start screen. An open project stays open, so you can switch between the tools.
+
 ## Install (Windows app)
 
 1. Download `VideoLabeler-Setup-<version>.exe` from the [latest release](https://github.com/iqrarwaqas/Video-Labeler/releases/latest) and run it. No admin rights are needed.
@@ -34,7 +41,7 @@ pip install -r requirements.txt
 python main.py --videos "D:\data\videos" --project "Batch_01"
 ```
 
-The app opens in its own window. You can also run `python main.py` with no arguments and fill in the project name and folders on the start screen (**Browse** opens a folder picker). The app remembers the last project you used.
+The app opens in its own window. With `--videos`, the labeler opens straight away. You can also run `python main.py` with no arguments, pick a tool on the start screen and fill in the folders there (**Browse** opens a folder picker). The app remembers the last folders you used in each tool.
 
 Options:
 
@@ -47,6 +54,26 @@ Options:
 | `--browser` | Open the app in the web browser instead of its own window |
 | `--port N` | Port of the local server (default 5000) |
 | `--host 0.0.0.0` | Let other PCs on the network open the app in their browser at `http://<this-pc>:<port>` |
+
+## Split long videos
+
+1. On the start screen, click **Video Splitter**. Pick the folder with the long videos and an **output (dataset) folder** for the clips. The output folder can't be the same as the long-videos folder.
+2. Pick a video in the sidebar and play it. Mark the parts you want to keep on the timeline:
+   - **Ranges:** press `I` (**Start**) where a part begins and `O` (**End**) where it ends. Everything between segments is left out.
+   - **Markers:** press `M` to drop a split marker, then click **Segments from markers**. This cuts the whole video into back-to-back pieces at the markers (parts that overlap an existing segment are skipped). Delete the pieces you don't want.
+3. Fine-tune: drag a segment to move it, drag its edges to resize it (the video shows the frame at the edge), or type exact times in the segment list (`1:02:03.500`, `2:03.5` or `123.5`). Segments can't overlap. Double-click a segment, or click ▶ in the list, to play just that segment.
+4. Click **Export clips**. Each segment is saved as its own MP4, numbered in time order: `interview.mp4` → `interview_1.mp4`, `interview_2.mp4`, … You can cancel at any time. Clips that are already finished are kept.
+5. Click **Open in Labeler** to label the new clips. The labeler setup opens with the output folder filled in.
+
+Shortcuts: `Space` play/pause · `←` / `→` 5 s back/forward (`Shift`: 1 s) · `,` / `.` one frame · `I` / `O` start/end · `M` marker · `Delete` delete the selected segment or marker · `Ctrl+Z` undo · `Ctrl`+mouse wheel or `+` / `-` zoom · `0` show the whole video · `Esc` cancel a started segment.
+
+Notes:
+
+- **Cuts are frame-accurate.** Clips are re-encoded to H.264/AAC MP4, so they always play in the labeler. This takes time: about 1–3 minutes of work for every 10 minutes of clips, depending on the PC.
+- **Your segments are saved as you work**, in `_splits.json` in the output folder. Open the same folders again to continue. The file also records which part of which source video every exported clip came from.
+- **Exporting a video again replaces its old clips.** The app asks first. Old clips that aren't in the new segment list are deleted, so the clips always match the segments.
+- The sidebar dot is blue when a video has exported clips and hollow when it has segments that aren't exported yet.
+- ffmpeg comes with the Windows app. When you run from source, `pip install -r requirements.txt` installs it (`imageio-ffmpeg`). If that isn't possible, an `ffmpeg` on PATH is used instead.
 
 ## How to label
 

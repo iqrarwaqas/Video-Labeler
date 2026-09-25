@@ -1,8 +1,10 @@
 """Video Speaker Labeler.
 
-A small desktop app for labeling who speaks first in each video
-(on-screen or off-screen actor). Labels are saved to an Excel file and the
-session resumes automatically from that file.
+A small desktop app with two tools:
+- Video Splitter (splitter.py): cut long videos into clips on a timeline.
+- Video Labeler: label who speaks first in each clip (on-screen or off-screen
+  actor). Labels are saved to an Excel file and the session resumes
+  automatically from that file.
 
 The UI is a local Flask app shown in a native window (pywebview / Edge WebView2).
 
@@ -24,7 +26,6 @@ import re
 import shutil
 import socket
 import subprocess
-import sys
 import tempfile
 import threading
 import urllib.request
@@ -36,20 +37,14 @@ import pandas as pd
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 from werkzeug.serving import make_server
 
-__version__ = "1.1.0"
+import splitter
+from common import APP_DATA, FROZEN, RESOURCE_DIR, list_videos, load_config, natural_key, update_config
+
+__version__ = "1.2.0"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
 
-FROZEN = getattr(sys, "frozen", False)  # running as the installed .exe
-# PyInstaller unpacks the bundled templates/static to sys._MEIPASS.
-RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-if FROZEN:
-    # The install folder isn't writable, so keep settings in the user's profile.
-    CONFIG_FILE = Path(os.environ.get("APPDATA", Path.home())) / "VideoLabeler" / "config.json"
-else:
-    CONFIG_FILE = RESOURCE_DIR / ".labeler_config.json"
 # Where the app window keeps its local storage (theme and UI preferences).
-WEBVIEW_STORAGE = Path(os.environ.get("APPDATA", Path.home())) / "VideoLabeler" / "WebView"
-VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v"}
+WEBVIEW_STORAGE = APP_DATA / "WebView"
 LEGACY_OUTPUT_NAME = "labels.xlsx"  # used before projects had names
 
 COLUMNS = ["Project", "Video_Name", "Video_File", "First_Speaker", "Onscreen_Diarized_Label", "Labeled_At"]
@@ -59,6 +54,7 @@ LABELS = {"onscreen", "offscreen", "unclear"}
 DIARIZED = {"onscreen": "A", "offscreen": "B", "unclear": ""}
 
 app = Flask(__name__, template_folder=str(RESOURCE_DIR / "templates"), static_folder=str(RESOURCE_DIR / "static"))
+app.register_blueprint(splitter.bp)
 lock = threading.Lock()
 window = None  # the pywebview window, when running as a desktop app
 
@@ -67,10 +63,6 @@ def safe_filename(name: str) -> str:
     """Make a project name usable as a Windows file name."""
     cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name).strip(" .")
     return cleaned or "project"
-
-
-def natural_key(name: str):
-    return [int(p) if p.isdigit() else p.lower() for p in re.split(r"(\d+)", name)]
 
 
 class Project:
@@ -82,10 +74,7 @@ class Project:
         self.output_dir = (output_dir or self.videos_dir.parent / "output").resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.output_file = self.output_dir / f"{safe_filename(self.name)}_labels.xlsx"
-        self.videos = sorted(
-            (p.name for p in self.videos_dir.iterdir() if p.is_file() and p.suffix.lower() in VIDEO_EXTS),
-            key=natural_key,
-        )
+        self.videos = list_videos(self.videos_dir)
         # Keyed by Video_File. Rows for videos no longer in the folder are kept.
         self.rows: dict[str, dict] = {}
         self._load()
@@ -177,23 +166,11 @@ class Project:
 project: Project | None = None
 
 
-def load_config() -> dict:
-    try:
-        return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-
-
-def save_config(videos: str, output: str, name: str):
-    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(json.dumps({"project": name, "videos": videos, "output": output}, indent=2), encoding="utf-8")
-
-
 def open_project(videos: str, output: str = "", name: str = "") -> Project:
     global project
     p = Project(Path(videos), Path(output) if output else None, name)
     project = p
-    save_config(str(p.videos_dir), str(p.output_dir), p.name)
+    update_config(project=p.name, videos=str(p.videos_dir), output=str(p.output_dir))
     return p
 
 
@@ -242,6 +219,7 @@ def check_update(force: bool = False) -> dict:
 
 
 def quit_app():
+    splitter.cancel_export()  # don't leave ffmpeg running in the background
     lock.acquire()  # let a label save that is in progress finish first
     os._exit(0)
 
