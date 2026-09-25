@@ -36,7 +36,7 @@ import pandas as pd
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 from werkzeug.serving import make_server
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 GITHUB_REPO = "iqrarwaqas/Video-Labeler"
 
 FROZEN = getattr(sys, "frozen", False)  # running as the installed .exe
