@@ -21,7 +21,11 @@ async function api(method, url, body) {
   });
   let data = {};
   try { data = await res.json(); } catch (_) { /* empty body */ }
-  if (!res.ok || data.ok === false) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok || data.ok === false) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 
@@ -85,16 +89,44 @@ function toggleMenu(open) {
   $("menu-btn").setAttribute("aria-expanded", String(show));
 }
 
+// ---------------------------------------------------------------- screens
+
+const SECTIONS = ["home", "setup", "labeler", "split-setup", "splitter"];
+const BRAND = { labeler: "Speaker Labeler", splitter: "Video Splitter" };
+const MODE_KEY = "labeler:mode";
+
+// Show one screen. The labeler (setup + labeler) and the splitter (split-setup + splitter) are the two modes.
+function showSection(id) {
+  if (id !== "splitter" && !$("splitter").classList.contains("hidden")) splitLeave();
+  for (const s of SECTIONS) $(s).classList.toggle("hidden", s !== id);
+  const mode = id === "home" ? null : id.startsWith("split") ? "splitter" : "labeler";
+  document.body.classList.toggle("has-project", id === "labeler");
+  document.body.classList.toggle("has-split", id === "splitter");
+  $("home-btn").classList.toggle("hidden", id === "home");
+  $("brand-name").textContent = BRAND[mode] || BRAND.labeler;
+  if (id !== "labeler") $("player").pause();
+  if (id !== "splitter") $("split-player").pause();
+  if (mode) localStorage.setItem(MODE_KEY, mode);
+  if (id !== "labeler" && id !== "splitter") document.title = APP_TITLE;
+}
+
+function showHome() {
+  showSection("home");
+  const last = localStorage.getItem(MODE_KEY) || "splitter";
+  document.querySelector(`.tool[data-mode="${last}"]`).focus();
+}
+
+function openMode(mode) {
+  return mode === "splitter" ? loadSplit() : load();
+}
+
 // ---------------------------------------------------------------- setup screen
 
 function showSetup(cfg = {}) {
   state = null;
-  document.title = APP_TITLE;
-  document.body.classList.remove("has-project");
   $("player").removeAttribute("src");
   $("player").load();
-  $("labeler").classList.add("hidden");
-  $("setup").classList.remove("hidden");
+  showSection("setup");
   $("setup-error").classList.add("hidden");
   if (cfg.last_project !== undefined) $("setup-project").value = cfg.last_project;
   if (cfg.last_videos !== undefined) $("setup-videos").value = cfg.last_videos;
@@ -126,7 +158,7 @@ async function submitSetup() {
 async function browse(inputId) {
   const input = $(inputId);
   // Start in the folder already typed, or next to the videos folder for the output.
-  const start = input.value || (inputId === "setup-output" ? $("setup-videos").value : "");
+  const start = input.value || (input.dataset.startFrom ? $(input.dataset.startFrom).value : "");
   const folder = await desktop().pick_folder(start);
   if (!folder) return;
   input.value = folder;
@@ -141,9 +173,7 @@ async function load() {
   const data = await api("GET", "/api/state");
   if (!data.ready) return showSetup(data);
   state = data;
-  document.body.classList.add("has-project");
-  $("setup").classList.add("hidden");
-  $("labeler").classList.remove("hidden");
+  showSection("labeler");
 
   document.title = `${state.project} · ${APP_TITLE}`;
   $("project-name").textContent = state.project;
@@ -312,6 +342,14 @@ async function changeProject() {
 
 // ---------------------------------------------------------------- events
 
+$("home-btn").addEventListener("click", showHome);
+document.querySelectorAll("[data-go-home]").forEach((b) => b.addEventListener("click", (e) => {
+  e.preventDefault();
+  showHome();
+}));
+document.querySelectorAll(".tool[data-mode]").forEach((b) =>
+  b.addEventListener("click", () => openMode(b.dataset.mode).catch((e) => toast(e.message, true))));
+
 $("setup-go").addEventListener("click", submitSetup);
 ["setup-project", "setup-videos", "setup-output"].forEach((id) =>
   $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") submitSetup(); }));
@@ -328,6 +366,7 @@ document.querySelectorAll("#theme-switch button").forEach((b) =>
   b.addEventListener("click", () => setTheme(b.dataset.themeChoice)));
 $("menu-update").addEventListener("click", () => checkUpdate(true));
 $("setup-update").addEventListener("click", () => checkUpdate(true));
+$("home-update").addEventListener("click", () => checkUpdate(true));
 $("menu-reveal").addEventListener("click", () => {
   toggleMenu(false);
   api("POST", "/api/reveal").catch((e) => toast(e.message, true));
@@ -339,6 +378,11 @@ $("menu-change").addEventListener("click", () => {
 $("empty-change").addEventListener("click", () => changeProject().catch((e) => toast(e.message, true)));
 
 $("toggle-sidebar").addEventListener("click", () => {
+  if (document.body.classList.contains("has-split")) {
+    const hidden = $("split-sidebar").classList.toggle("collapsed");
+    localStorage.setItem(SPLIT_SIDEBAR_KEY, JSON.stringify(hidden));
+    return renderTimeline();
+  }
   const hidden = $("sidebar").classList.toggle("collapsed");
   setPref("sidebarHidden", hidden);
 });
@@ -361,6 +405,7 @@ $("player").addEventListener("error", () => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (!$("splitter").classList.contains("hidden")) return splitterKey(e);
   if (e.key === "Escape") return toggleMenu(false);
   if (!state || $("labeler").classList.contains("hidden")) return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -401,7 +446,7 @@ function showUpdateBanner(info) {
 
 // manual: the user clicked "Check for updates", so always ask GitHub again and report the result.
 async function checkUpdate(manual = false) {
-  const buttons = [$("menu-update"), $("setup-update")];
+  const buttons = [$("menu-update"), $("setup-update"), $("home-update")];
   if (manual) buttons.forEach((b) => { b.disabled = true; b.lastElementChild.textContent = "Checking…"; });
   let info;
   try {
@@ -454,6 +499,13 @@ function onDesktopReady() {
 if (desktop()) onDesktopReady();
 else window.addEventListener("pywebviewready", onDesktopReady);
 
+// Start on the Home screen, unless a project was opened from the command line (--videos).
+async function start() {
+  const data = await api("GET", "/api/state");
+  if (data.ready) return load();
+  showHome();
+}
+
 applyTheme();
-load().catch((e) => toast(e.message, true));
+start().catch((e) => toast(e.message, true));
 checkUpdate();
