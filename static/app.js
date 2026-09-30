@@ -212,17 +212,33 @@ function updateCounts(c) {
 }
 
 function setFilter(filter, save = true) {
-  document.querySelectorAll("#list-filter button").forEach((b) =>
+  document.querySelectorAll("#list-filter button, #label-filter button").forEach((b) =>
     b.classList.toggle("active", b.dataset.filter === filter));
   if (save) {
     setPref("filter", filter);
     renderList();
+    // A label filter opens its first video, so you can start relabeling right away.
+    if (isLabelFilter(filter) && state && state.items.length && !matchesFilter(state.items[current], filter)) {
+      const first = state.items.find((item) => matchesFilter(item, filter));
+      if (first) select(first.index);
+    }
   }
 }
 
+function isLabelFilter(filter) {
+  return filter in STATUS;
+}
+
 function currentFilter() {
-  const active = document.querySelector("#list-filter button.active");
+  const active = document.querySelector("#list-filter button.active, #label-filter button.active");
   return active ? active.dataset.filter : "all";
+}
+
+function matchesFilter(item, filter) {
+  if (filter === "all") return true;
+  if (filter === "todo") return !item.label;
+  if (filter === "done") return !!item.label;
+  return item.label === filter;  // onscreen / offscreen / unclear
 }
 
 function renderList() {
@@ -234,7 +250,7 @@ function renderList() {
   for (const item of state.items) {
     if (q && !item.name.toLowerCase().includes(q)) continue;
     // Keep the open video in the list, even if the filter would hide it.
-    if (item.index !== current && ((filter === "todo" && item.label) || (filter === "done" && !item.label))) continue;
+    if (item.index !== current && !matchesFilter(item, filter)) continue;
     const li = document.createElement("li");
     li.dataset.index = item.index;
     li.className = item.index === current ? "active" : "";
@@ -291,6 +307,19 @@ function nextUnlabeled(from) {
   return null;
 }
 
+// With a label filter on (e.g. Unclear), move to the next video that still has
+// that label; otherwise to the next unlabeled video.
+function nextMatching(from) {
+  const filter = currentFilter();
+  if (!isLabelFilter(filter)) return nextUnlabeled(from);
+  const n = state.items.length;
+  for (let k = 1; k < n; k++) {
+    const i = (from + k) % n;
+    if (matchesFilter(state.items[i], filter)) return i;
+  }
+  return null;
+}
+
 async function setLabel(label) {
   if (!state || !state.items.length) return;
   const item = state.items[current];
@@ -305,8 +334,10 @@ async function setLabel(label) {
     renderStatus();
     renderList();
     if ($("auto-advance").checked) {
-      const next = nextUnlabeled(current);
+      const next = nextMatching(current);
+      const filter = currentFilter();
       if (next !== null) select(next);
+      else if (isLabelFilter(filter)) toast(`No more ${STATUS[filter]} videos`);
       else toast(`All videos in "${state.project}" are labeled 🎉`);
     }
   } catch (e) {
@@ -389,6 +420,9 @@ $("toggle-sidebar").addEventListener("click", () => {
 $("search").addEventListener("input", renderList);
 document.querySelectorAll("#list-filter button").forEach((b) =>
   b.addEventListener("click", () => setFilter(b.dataset.filter)));
+// Clicking a label count shows only that label; clicking it again goes back to All.
+document.querySelectorAll("#label-filter button").forEach((b) =>
+  b.addEventListener("click", () => setFilter(currentFilter() === b.dataset.filter ? "all" : b.dataset.filter)));
 $("auto-advance").addEventListener("change", (e) => setPref("autoAdvance", e.target.checked));
 $("video-list").addEventListener("click", (e) => {
   const li = e.target.closest("li");

@@ -307,6 +307,15 @@ input[type="text"]:focus, input[type="search"]:focus { outline: none; border-col
 .stat.onscreen { background: var(--onscreen-soft); }
 .stat.offscreen { background: var(--offscreen-soft); }
 .stat.unclear { background: var(--unclear-soft); }
+#label-filter .stat {
+  border: 1px solid transparent; font: inherit; font-size: 12px; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+#label-filter .stat:hover { color: var(--text); }
+#label-filter .stat:focus-visible { outline: none; box-shadow: var(--ring); }
+#label-filter .stat.onscreen.active { border-color: var(--onscreen); color: var(--text); }
+#label-filter .stat.offscreen.active { border-color: var(--offscreen); color: var(--text); }
+#label-filter .stat.unclear.active { border-color: var(--unclear); color: var(--text); }
 
 .video-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; flex: 1; }
 .video-list li {

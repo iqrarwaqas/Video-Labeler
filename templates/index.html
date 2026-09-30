@@ -311,10 +311,10 @@
         <button data-filter="todo">To do</button>
         <button data-filter="done">Done</button>
       </div>
-      <div class="stats">
-        <span class="stat onscreen" title="On-screen"><i class="dot onscreen"></i><b id="stat-onscreen">0</b> On</span>
-        <span class="stat offscreen" title="Off-screen"><i class="dot offscreen"></i><b id="stat-offscreen">0</b> Off</span>
-        <span class="stat unclear" title="Unclear"><i class="dot unclear"></i><b id="stat-unclear">0</b> Unclear</span>
+      <div id="label-filter" class="stats">
+        <button class="stat onscreen" data-filter="onscreen" title="Show on-screen videos"><i class="dot onscreen"></i><b id="stat-onscreen">0</b> On</button>
+        <button class="stat offscreen" data-filter="offscreen" title="Show off-screen videos"><i class="dot offscreen"></i><b id="stat-offscreen">0</b> Off</button>
+        <button class="stat unclear" data-filter="unclear" title="Show unclear videos"><i class="dot unclear"></i><b id="stat-unclear">0</b> Unclear</button>
       </div>
     </div>
     <ul id="video-list" class="video-list"></ul>
